@@ -9,14 +9,14 @@ import numpy as np
 import tensorflow as tf
 import cv2
 
-from utils import label_map_util
-from utils import visualization_utils_color as vis_util
+from tf_face.utils import label_map_util
+from tf_face.utils import visualization_utils_color as vis_util
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = './model/frozen_inference_graph_face.pb'
+PATH_TO_CKPT = 'tf_face/model/frozen_inference_graph_face.pb'
 
 # List of the strings that is used to add correct label for each box.
-PATH_TO_LABELS = './protos/face_label_map.pbtxt'
+PATH_TO_LABELS = 'tf_face/protos/face_label_map.pbtxt'
 
 NUM_CLASSES = 2
 
@@ -70,10 +70,57 @@ class TensoflowFaceDector(object):
             [boxes, scores, classes, num_detections],
             feed_dict={image_tensor: image_np_expanded})
         elapsed_time = time.time() - start_time
-        print('inference time cost: {}'.format(elapsed_time))
+        # print('inference time cost: {}'.format(elapsed_time))
 
         return (boxes, scores, classes, num_detections)
 
+
+class Capture:
+    def __init__(self, cam_id, callback=None):
+        self.detector = TensoflowFaceDector(PATH_TO_CKPT)
+        self.cap = cv2.VideoCapture(cam_id)
+        self.windowNotSet = True
+        self.callback = callback
+
+    def __del__(self):
+        self.cap.release()
+
+    def capture(self, roll = None):
+        ret, image = self.cap.read()
+        if ret == 0:
+            return
+
+        [h, w] = image.shape[:2]
+
+        if roll:
+            M = cv2.getRotationMatrix2D((w/2,h/2), roll, 1)
+            image = cv2.warpAffine(image,M,(w,h))
+
+        # print (h, w)
+        image = cv2.flip(image, 1)
+
+        (boxes, scores, classes, num_detections) = self.detector.run(image)
+
+        faces = vis_util.visualize_boxes_and_labels_on_image_array(
+            image,
+            np.squeeze(boxes),
+            np.squeeze(classes).astype(np.int32),
+            np.squeeze(scores),
+            category_index,
+            use_normalized_coordinates=True,
+            line_thickness=4)
+
+        if self.callback:
+            self.callback(faces)
+
+        if self.windowNotSet is True:
+            cv2.namedWindow("tensorflow based (%d, %d)" % (w, h), cv2.WINDOW_NORMAL)
+            self.windowNotSet = False
+
+        cv2.imshow("tensorflow based (%d, %d)" % (w, h), image)
+        k = cv2.waitKey(1) & 0xff
+        if k == ord('q') or k == 27:
+            sys.exit(0)
 
 if __name__ == "__main__":
     import sys
@@ -83,41 +130,11 @@ if __name__ == "__main__":
         exit(1)
 
     try:
-    	camID = int(sys.argv[1])
+        camID = int(sys.argv[1])
     except:
-    	camID = sys.argv[1]
+        camID = sys.argv[1]
     
-    tDetector = TensoflowFaceDector(PATH_TO_CKPT)
-
-    cap = cv2.VideoCapture(camID)
-    windowNotSet = True
+    c = Capture(camID)
     while True:
-        ret, image = cap.read()
-        if ret == 0:
-            break
+        c.capture()
 
-        [h, w] = image.shape[:2]
-        print (h, w)
-        image = cv2.flip(image, 1)
-
-        (boxes, scores, classes, num_detections) = tDetector.run(image)
-
-        vis_util.visualize_boxes_and_labels_on_image_array(
-            image,
-            np.squeeze(boxes),
-            np.squeeze(classes).astype(np.int32),
-            np.squeeze(scores),
-            category_index,
-            use_normalized_coordinates=True,
-            line_thickness=4)
-
-        if windowNotSet is True:
-            cv2.namedWindow("tensorflow based (%d, %d)" % (w, h), cv2.WINDOW_NORMAL)
-            windowNotSet = False
-
-        cv2.imshow("tensorflow based (%d, %d)" % (w, h), image)
-        k = cv2.waitKey(1) & 0xff
-        if k == ord('q') or k == 27:
-            break
-
-    cap.release()

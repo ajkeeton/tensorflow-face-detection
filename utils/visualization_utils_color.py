@@ -370,9 +370,12 @@ def visualize_boxes_and_labels_on_image_array(image,
   box_to_keypoints_map = collections.defaultdict(list)
   if not max_boxes_to_draw:
     max_boxes_to_draw = boxes.shape[0]
+
+  faces = []
   for i in range(min(max_boxes_to_draw, boxes.shape[0])):
     if scores is None or scores[i] > min_score_thresh:
       box = tuple(boxes[i].tolist())
+      faces += [box]
       if instance_masks is not None:
         box_to_instance_masks_map[box] = instance_masks[i]
       if keypoints is not None:
@@ -401,6 +404,7 @@ def visualize_boxes_and_labels_on_image_array(image,
   for box, color in box_to_color_map.items():
     color = 'Violet'
     ymin, xmin, ymax, xmax = box
+
     if instance_masks is not None:
       draw_mask_on_image_array(
           image,
@@ -424,3 +428,5 @@ def visualize_boxes_and_labels_on_image_array(image,
           color=color,
           radius=line_thickness / 2,
           use_normalized_coordinates=use_normalized_coordinates)
+
+    return faces
