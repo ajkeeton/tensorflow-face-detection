@@ -110,8 +110,8 @@ class Capture:
             use_normalized_coordinates=True,
             line_thickness=4)
 
-        if self.callback:
-            self.callback(faces)
+        #if self.callback:
+        #    self.callback(faces, scores)
 
         if self.windowNotSet is True:
             cv2.namedWindow("tensorflow based (%d, %d)" % (w, h), cv2.WINDOW_NORMAL)
@@ -121,6 +121,8 @@ class Capture:
         k = cv2.waitKey(1) & 0xff
         if k == ord('q') or k == 27:
             sys.exit(0)
+
+        return faces, scores
 
 if __name__ == "__main__":
     import sys
